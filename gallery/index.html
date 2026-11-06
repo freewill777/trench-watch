@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Structure gallery</title>
+<style>
+  :root { color-scheme: dark; --bg:#12140f; --card:#1c2118; --ink:#e7efe0; --muted:#9aa892; --line:#31382c; --ok:#b6e37a; --warn:#e6c36a; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 "Segoe UI", sans-serif; background:var(--bg); color:var(--ink); }
+  main { width:min(920px, calc(100% - 32px)); margin:0 auto; padding:32px 0 64px; }
+  a { color:var(--ok); }
+  h1 { font-size:28px; letter-spacing:-0.03em; margin:0 0 8px; }
+  h2 { font-size:18px; margin:0; }
+  p { color:var(--muted); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px 18px; margin:16px 0; }
+  .row { display:flex; justify-content:space-between; gap:12px; align-items:baseline; flex-wrap:wrap; }
+  .chip { border:1px solid var(--line); border-radius:999px; padding:2px 8px; font-size:12px; color:var(--muted); }
+  .chip.current { color:var(--ok); }
+  table { width:100%; border-collapse:collapse; margin-top:12px; }
+  th, td { text-align:left; padding:6px 8px; border-top:1px solid var(--line); vertical-align:top; font-size:13px; }
+  th { color:var(--muted); font-weight:600; }
+  .links { display:flex; gap:14px; margin-top:12px; }
+</style>
+</head>
+<body>
+<main>
+  <p><a href="/">Trench Watch</a></p>
+  <h1>Structure gallery</h1>
+  <p>Each card is a rule for laying this ledger against the papers. The current rule is the one the agent runs. When a rule is replaced, its figure stays here. Last run 11/6/2026, 2:58:39 PM, 3545 mints in the ledger.</p>
+  <article class="card">
+    <div class="row">
+      <h2>Receiving gauge</h2>
+      <span class="chip current">Current · v2 · 2026-11-06</span>
+    </div>
+    <p>The dial opens only when the paper and the ledger share a quantity, a population, and a definition, and the ledger sample is large enough. Anything else stays in the hold tray.</p>
+    
+    <table>
+      <tr><th>Stop</th><th>Verdict</th><th>Ledger</th><th>Paper</th><th>Why</th></tr>
+      <tr>
+        <td>Developer buy</td>
+        <td>Held</td>
+        <td>96.5%</td>
+        <td>98.7%</td>
+        <td>Held. The gates that differ: population (Successful creates this watcher kept against Coins that migrated, which is the set MELT keeps). 3422 of 3545 kept creates include a creator buy.</td>
+      </tr><tr>
+        <td>Developer buy, usual</td>
+        <td>Agree</td>
+        <td>96.5%</td>
+        <td>98.7%</td>
+        <td>Both samples clear 90 percent, so a developer buy is usual in each. Ledger 96.5% on any sample of create transactions. Paper 98.7% on any sample of create transactions. This stop does not match the two rates to each other. 3422 of 3545 kept creates include a creator buy.</td>
+      </tr><tr>
+        <td>Graduation</td>
+        <td>Held</td>
+        <td>2.65%</td>
+        <td>1.02%</td>
+        <td>Held. The gates that differ: quantity (Share of 30-minute readings still at least 5 SOL against Share of coins that graduate); population (Kept mints that have a 30-minute curve snapshot against All 15.2 million Pump.fun coins from January 2024 to January 2026); definition (The stored 30-minute real_sol reading is at least 5 SOL against The platform's graduation flag). 86 of 3244 thirty-minute readings are at least 5 SOL. 24 read above 105 SOL. 62 sit between 5 and 105 SOL.</td>
+      </tr><tr>
+        <td>Copycats</td>
+        <td>Held</td>
+        <td>78.4%</td>
+        <td>10.0%</td>
+        <td>Held. The gates that differ: quantity (Share of mints from a creator who already launched against Share of coins that are copycats); population (Successful creates this watcher kept against All Pump.fun coins in the factory study); definition (The same creator wallet appears on more than one kept mint against A copy of another coin's name or theme). 2779 of 3545 mints come from a creator wallet that launched more than once.</td>
+      </tr><tr>
+        <td>Wash trades</td>
+        <td>Thin sample</td>
+        <td>absent</td>
+        <td>17.0%</td>
+        <td>The ledger has not counted this. The rate is left empty. This joint waits for 100 rows. 0 holder investigations are saved. None of them is a count of wash trades.</td>
+      </tr><tr>
+        <td>Under 1 SOL</td>
+        <td>Held</td>
+        <td>93.3%</td>
+        <td>53.0%</td>
+        <td>Held. The gates that differ: quantity (Share whose highest stored checkpoint is under 1 SOL against Share of launches that never hold more than 1 SOL); population (Kept mints with at least one curve reading against 200,443 launches in one complete 88-hour window); definition (The highest stored checkpoint reading is at most 1 SOL against The curve never holds more than 1 SOL during the window). 3305 of 3544 mints have a highest stored checkpoint of at most 1 SOL.</td>
+      </tr>
+    </table>
+    <div class="links">
+      <a href="v2/figure.html">Open the figure</a>
+      <a href="v2/figure-light.html">Light</a>
+    </div>
+  </article>
+<article class="card">
+    <div class="row">
+      <h2>Open comparator</h2>
+      <span class="chip ">Kept · v1 · 2026-11-06</span>
+    </div>
+    <p>Two percentages share a pan. The dial turns by their difference. A rate the ledger never counted is set on the pan as zero.</p>
+    <p>The graduation flag and a 30-minute curve reading were weighed as one length. A wash rate that was never counted was weighed as zero.</p>
+    <table>
+      <tr><th>Stop</th><th>Verdict</th><th>Ledger</th><th>Paper</th><th>Why</th></tr>
+      <tr>
+        <td>Developer buy</td>
+        <td>Agree</td>
+        <td>96.5%</td>
+        <td>98.7%</td>
+        <td>Compared directly: ledger 96.5% (The create transaction includes a buy by the creator) against paper 98.7% (The create transaction includes a buy by the creator). This structure calls that a match when the gap is within 2 percentage points, or within 15 percent of the paper's rate. 3422 of 3545 kept creates include a creator buy.</td>
+      </tr><tr>
+        <td>Graduation</td>
+        <td>Agree</td>
+        <td>2.65%</td>
+        <td>1.02%</td>
+        <td>Compared directly: ledger 2.65% (The stored 30-minute real_sol reading is at least 5 SOL) against paper 1.02% (The platform's graduation flag). This structure calls that a match when the gap is within 2 percentage points, or within 15 percent of the paper's rate. 86 of 3244 thirty-minute readings are at least 5 SOL. 24 read above 105 SOL. 62 sit between 5 and 105 SOL.</td>
+      </tr><tr>
+        <td>Copycats</td>
+        <td>Diverge</td>
+        <td>78.4%</td>
+        <td>10.0%</td>
+        <td>Compared directly: ledger 78.4% (The same creator wallet appears on more than one kept mint) against paper 10.0% (A copy of another coin's name or theme). The gap is wider than that band, so this structure calls it a difference. 2779 of 3545 mints come from a creator wallet that launched more than once.</td>
+      </tr><tr>
+        <td>Wash trades</td>
+        <td>Diverge</td>
+        <td>absent</td>
+        <td>17.0%</td>
+        <td>Compared directly: ledger 0.0% (The same address buys and sells the same amount inside one transaction) against paper 17.0% (The same address buys and sells the same amount inside one transaction). The gap is wider than that band, so this structure calls it a difference. The ledger has no rate, and this structure enters that absence as zero. 0 holder investigations are saved. None of them is a count of wash trades.</td>
+      </tr><tr>
+        <td>Under 1 SOL</td>
+        <td>Diverge</td>
+        <td>93.3%</td>
+        <td>53.0%</td>
+        <td>Compared directly: ledger 93.3% (The highest stored checkpoint reading is at most 1 SOL) against paper 53.0% (The curve never holds more than 1 SOL during the window). The gap is wider than that band, so this structure calls it a difference. 3305 of 3544 mints have a highest stored checkpoint of at most 1 SOL.</td>
+      </tr>
+    </table>
+    <div class="links">
+      <a href="v1/figure.html">Open the figure</a>
+      <a href="v1/figure-light.html">Light</a>
+    </div>
+  </article>
+  <p>The figures are instruments. Hover a figure to move from claim to claim. The numbers are the agent's last comparison. Nothing on this page is a buy rule.</p>
+</main>
+</body>
+</html>

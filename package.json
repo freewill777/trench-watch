@@ -1,0 +1,15 @@
+{
+  "name": "trench-watch",
+  "private": true,
+  "type": "module",
+  "description": "Observe Pump.fun launches and label which ones are still tradable after 48 hours. No wallet and no trading.",
+  "scripts": {
+    "watch": "node src/watch.js",
+    "once": "node src/watch.js --once --limit 3",
+    "report": "node src/report.js",
+    "panel": "node src/panel.js",
+    "crossref": "node src/crossref.js",
+    "insights": "node src/insights.js",
+    "figures": "node figures/v1/build.mjs && node figures/v2/build.mjs"
+  }
+}

@@ -1,0 +1,17 @@
+﻿<service>
+  <id>TrenchWatch</id>
+  <name>Trench Watch</name>
+  <description>Records Pump.fun launches into the local trench database and serves the status panel on 127.0.0.1:8787.</description>
+  <executable>C:\Program Files\nodejs\node.exe</executable>
+  <arguments>C:\Users\krs\work\trench-watch\src\watch.js</arguments>
+  <workingdirectory>C:\Users\krs\work\trench-watch</workingdirectory>
+  <logpath>C:\Users\krs\work\trench-watch\data\service</logpath>
+  <log mode="roll-by-size">
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>3</keepFiles>
+  </log>
+  <onfailure action="restart" delay="15 sec"/>
+  <resetfailure>1 hour</resetfailure>
+  <startmode>Automatic</startmode>
+  <delayedAutoStart>true</delayedAutoStart>
+</service>
