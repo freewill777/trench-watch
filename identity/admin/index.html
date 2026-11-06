@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trench Watch · Administration</title>
+<style>
+:root{color-scheme:dark;--bg:#0b0f0c;--card:#151e17;--ink:#ece4c8;--muted:#9fa68a;--line:#2e3c2e;--gold:#e2b558;--ok:#8fd16a;--bad:#e0715f;--warn:#e8b84d}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.45 "Segoe UI",sans-serif;background:var(--bg);color:var(--ink);min-height:100vh}
+main{width:min(640px,calc(100% - 32px));margin:0 auto;padding:28px 0}
+h1{font-size:22px;letter-spacing:.06em;text-transform:uppercase;margin:0 0 4px;color:var(--gold)}
+h2{font-size:16px;margin:0 0 6px}
+p{color:var(--muted);margin:6px 0}
+.card{background:var(--card);border:1px solid var(--line);border-top:2px solid var(--gold);padding:16px 18px;margin-top:16px}
+label{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:12px 0 4px}
+input,select{width:100%;padding:9px 10px;background:var(--bg);color:var(--ink);border:1px solid var(--line);font:inherit}
+button{margin-top:14px;padding:10px 16px;background:var(--gold);color:#120e02;border:0;font-weight:700;cursor:pointer}
+button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+button:disabled{opacity:.4;cursor:not-allowed}
+.msg{margin-top:10px;font-size:13px;min-height:18px}
+.msg.bad{color:var(--bad)} .msg.ok{color:var(--ok)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.pill{border:1px solid var(--line);padding:4px 10px;font-size:12px;color:var(--muted)}
+.pill.real{border-color:var(--bad);color:var(--bad)}
+.hidden{display:none}
+.warnbox{border-left:4px solid var(--bad);background:rgba(224,113,95,.08);padding:10px 12px;margin-top:12px;font-size:13px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Administration</h1>
+  <p>Chooses the chain for identity accounts and game wallets. Changes need the admin password again.</p>
+
+  <section class="card" id="login-card">
+    <h2>Sign in</h2>
+    <label for="user">Username</label>
+    <input id="user" autocomplete="username" value="admin">
+    <label for="pass">Password</label>
+    <input id="pass" type="password" autocomplete="current-password">
+    <button id="signin">Sign in</button>
+    <div class="msg" id="login-msg"></div>
+  </section>
+
+  <section class="card hidden" id="panel">
+    <div class="row"><span class="pill" id="current-chain">chain: —</span><span class="pill" id="real-pill">real money: off</span></div>
+
+    <label for="chain">Chain</label>
+    <select id="chain">
+      <option value="devnet">devnet (test SOL, no value)</option>
+      <option value="testnet">testnet (test SOL, no value)</option>
+      <option value="mainnet-beta">mainnet-beta (real SOL)</option>
+      <option value="custom">custom https RPC</option>
+    </select>
+
+    <div id="custom-wrap" class="hidden">
+      <label for="custom">Custom RPC URL (https)</label>
+      <input id="custom" placeholder="https://rpc.example.com">
+    </div>
+
+    <div class="row" style="margin-top:12px">
+      <label class="row" style="margin:0;text-transform:none;letter-spacing:0;color:var(--ink);font-size:14px"><input id="real" type="checkbox" style="width:auto"> Enable real-money writes (mainnet only)</label>
+    </div>
+    <div class="warnbox hidden" id="real-warn">Real-money writes spend real SOL on mainnet-beta. Leave this off unless you intend to. Reads are allowed either way.</div>
+
+    <label for="confirm">Admin password, to confirm this change</label>
+    <input id="confirm" type="password" autocomplete="current-password">
+    <div class="row">
+      <button id="save">Save chain policy</button>
+      <button class="ghost" id="signout">Sign out</button>
+    </div>
+    <div class="msg" id="panel-msg"></div>
+  </section>
+
+  <section class="card hidden" id="pw-card">
+    <h2>Change admin password</h2>
+    <label for="newpw">New password (at least 8 characters)</label>
+    <input id="newpw" type="password" autocomplete="new-password">
+    <button class="ghost" id="changepw">Change password</button>
+    <div class="msg" id="pw-msg"></div>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+function say(id, text, cls) { const el = $(id); el.textContent = text; el.className = 'msg ' + (cls || ''); }
+async function api(path, body) {
+  const res = await fetch(path, { method: body ? 'POST' : 'GET', headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+  return data;
+}
+function showPanel(on) {
+  $('login-card').classList.toggle('hidden', on);
+  $('panel').classList.toggle('hidden', !on);
+  $('pw-card').classList.toggle('hidden', !on);
+}
+function syncChainUi() {
+  $('custom-wrap').classList.toggle('hidden', $('chain').value !== 'custom');
+  $('real-warn').classList.toggle('hidden', $('chain').value !== 'mainnet-beta');
+}
+async function load() {
+  try {
+    const state = await api('/api/admin/state');
+    showPanel(true);
+    $('chain').value = state.policy.chain;
+    $('custom').value = state.policy.customUrl || '';
+    $('real').checked = state.policy.realMoneyEnabled;
+    $('current-chain').textContent = 'chain: ' + state.policy.chain;
+    $('real-pill').textContent = 'real money: ' + (state.policy.realMoneyEnabled ? 'ON' : 'off');
+    $('real-pill').className = 'pill' + (state.policy.realMoneyEnabled ? ' real' : '');
+    syncChainUi();
+  } catch (err) {
+    showPanel(false);
+  }
+}
+$('chain').onchange = syncChainUi;
+$('signin').onclick = async () => {
+  $('signin').disabled = true;
+  try {
+    await api('/api/admin/login', { user: $('user').value, password: $('pass').value });
+    $('pass').value = '';
+    say('login-msg', '');
+    await load();
+  } catch (err) {
+    say('login-msg', err.message, 'bad');
+  } finally {
+    $('signin').disabled = false;
+  }
+};
+$('pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('signin').click(); });
+$('signout').onclick = async () => { await api('/api/admin/logout', {}); showPanel(false); };
+$('save').onclick = async () => {
+  if ($('chain').value === 'mainnet-beta' && $('real').checked && !confirm('Enable real-money writes on mainnet-beta? Writes will spend real SOL.')) return;
+  try {
+    const body = { chain: $('chain').value, customUrl: $('custom').value || null, realMoneyEnabled: $('real').checked, password: $('confirm').value };
+    const res = await api('/api/admin/policy', body);
+    $('confirm').value = '';
+    say('panel-msg', 'Saved. Chain is now ' + res.policy.chain + '.', 'ok');
+    await load();
+  } catch (err) {
+    say('panel-msg', err.message, 'bad');
+  }
+};
+$('changepw').onclick = async () => {
+  try {
+    await api('/api/admin/password', { password: $('newpw').value });
+    $('newpw').value = '';
+    say('pw-msg', 'Password changed. Use the new one next time.', 'ok');
+  } catch (err) {
+    say('pw-msg', err.message, 'bad');
+  }
+};
+load();
+</script>
+</body>
+</html>

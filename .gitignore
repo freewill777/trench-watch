@@ -4,3 +4,6 @@ vendor/
 *.log
 devnet/wallets/
 devnet/runs/
+devnet/admin.json
+devnet/chain-policy.json
+devnet/network.json

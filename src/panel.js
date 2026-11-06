@@ -10,6 +10,7 @@ import { readLatestInsights } from "./insights.js";
 import { pct, verdictLabel } from "./structures.js";
 import { ArenaError, ASSUMPTIONS, act, baselineCached, startRun } from "./arena.js";
 import { networkStatus } from "./network.js";
+import { handleIdentity } from "./routes-identity.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dbFile = path.join(root, "data", "trench.db");
@@ -320,7 +321,7 @@ function page() {
   <div class="cross" id="arena-box">
     <p>A game on the ledger's real pump.fun launches. Each round shows the 5-minute bonding-curve reading. You snipe for 1 SOL or pass, and the same coin's 30-minute reading settles the trade. Hypothetical fills only. No wallet, no transactions.</p>
     <p id="arena-base">Loading the ledger baseline…</p>
-    <p><a href="/arena" target="_blank" rel="noreferrer">Open the arena in its own tab</a></p>
+    <p><a href="/arena" target="_blank" rel="noreferrer">Open the arena in its own tab</a> · <a href="/login" target="_blank" rel="noreferrer">Sign in with a wallet</a></p>
     <iframe src="/arena" title="Sniper arena" style="width:100%;height:900px;border:1px solid var(--line);background:#080711;"></iframe>
   </div>
   <h2>Recon · cross-research</h2>
@@ -577,6 +578,7 @@ export function startPanel(port = Number(process.env.PANEL_PORT || 8787)) {
       }
       return;
     }
+    if (await handleIdentity(req, res, url, { sendJson, readBody })) return;
     if (url.pathname === "/api/network" && req.method === "GET") {
       try {
         sendJson(res, 200, await networkStatus());

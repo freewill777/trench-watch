@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trench Watch · Sign in with a wallet</title>
+<style>
+:root{color-scheme:dark;--bg:#0b0f0c;--card:#151e17;--ink:#ece4c8;--muted:#9fa68a;--line:#2e3c2e;--gold:#e2b558;--ok:#8fd16a;--bad:#e0715f}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.45 "Segoe UI",sans-serif;background:var(--bg);color:var(--ink);min-height:100vh}
+main{width:min(560px,calc(100% - 32px));margin:0 auto;padding:28px 0}
+h1{font-size:22px;letter-spacing:.06em;text-transform:uppercase;margin:0 0 4px;color:var(--gold)}
+p{color:var(--muted);margin:6px 0}
+.card{background:var(--card);border:1px solid var(--line);border-top:2px solid var(--gold);padding:16px 18px;margin-top:16px}
+button{margin-top:12px;padding:10px 16px;background:var(--gold);color:#120e02;border:0;font-weight:700;cursor:pointer}
+button:disabled{opacity:.4;cursor:not-allowed}
+code{font-family:Consolas,monospace;font-size:12px;word-break:break-all;color:var(--muted)}
+.msg{margin-top:10px;font-size:13px;min-height:18px;white-space:pre-wrap}
+.msg.bad{color:var(--bad)} .msg.ok{color:var(--ok)}
+.hidden{display:none}
+a{color:var(--gold)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Sign in with a wallet</h1>
+  <p>No password. Your Solana wallet signs a one-time message to prove you own its address. The signature sends no transaction and costs no SOL.</p>
+
+  <section class="card">
+    <p id="status">Looking for a Solana wallet in this browser…</p>
+    <button id="connect" disabled>Connect wallet</button>
+    <div class="msg" id="msg"></div>
+    <p class="hidden" id="who">Signed in as <code id="addr"></code>.</p>
+    <p><a href="/">Back to the panel</a></p>
+  </section>
+</main>
+<script type="module">
+import { findProvider, signIn } from "/identity/login/wallet-login.js";
+
+const $ = (id) => document.getElementById(id);
+const say = (text, cls) => { $("msg").textContent = text; $("msg").className = "msg " + (cls || ""); };
+
+const api = {
+  async post(path, body) {
+    const res = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "the server returned HTTP " + res.status);
+    return data;
+  },
+};
+
+const found = findProvider(window);
+if (found) {
+  $("status").textContent = "Found " + found.name + " in this browser.";
+  $("connect").disabled = false;
+  $("connect").onclick = async () => {
+    $("connect").disabled = true;
+    try {
+      const { address } = await signIn({ wallet: found.provider, api, say });
+      $("addr").textContent = address;
+      $("who").classList.remove("hidden");
+      say("Signed in.", "ok");
+    } catch (err) {
+      say(err.message, "bad");
+    } finally {
+      $("connect").disabled = false;
+    }
+  };
+} else {
+  $("status").textContent = "No Solana wallet was found. Install a Solana wallet extension such as Phantom or Solflare, then reload this page.";
+}
+</script>
+</body>
+</html>
