@@ -1,4 +1,4 @@
-const DEFAULT_HTTP = "https://api.mainnet-beta.solana.com";
+export const DEFAULT_HTTP = "https://api.mainnet-beta.solana.com";
 
 export class Rpc {
   constructor(url = process.env.SOLANA_RPC_URL || DEFAULT_HTTP) {

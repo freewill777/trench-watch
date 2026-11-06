@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sniper Bot · Arena on real launches</title>
+<style>
+:root{--bg:#080711;--fg:#e8e8ff;--panel:#100f20;--line:#2c2650;--green:#14f195;--purple:#9945ff;--red:#ff4d6d;--mut:#8a86aa}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;min-height:100vh}
+.wrap{max-width:820px;margin:0 auto;padding:14px}
+.top{display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between;align-items:center;margin-bottom:12px}
+.brand{font-weight:800;font-size:18px;color:var(--green)}.brand span{color:var(--purple)}
+.stats{display:flex;gap:16px;font-size:12px;color:var(--mut)}
+.stats b{display:block;font-size:18px;color:var(--fg)}
+.good{color:var(--green)}.bad{color:var(--red)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;font-size:13px;min-height:360px}
+.card h2{margin:0 0 4px;font-size:22px}
+.mint{font-size:11px;color:var(--mut);word-break:break-all}
+.mint a{color:var(--purple)}
+.meta{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+.meta div{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;font-size:11px;color:var(--mut)}
+.meta b{display:block;font-size:15px;color:var(--fg)}
+.bar{height:8px;border-radius:9px;background:var(--line);overflow:hidden;margin:6px 0}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--purple),var(--green))}
+canvas{width:100%;height:64px;display:block;margin-top:10px}
+.btns{display:flex;gap:8px;margin-top:12px}
+button{font:inherit;font-weight:800;border:0;border-radius:8px;padding:12px 8px;cursor:pointer;flex:1;color:#04120c;background:var(--green)}
+button.pass{background:var(--panel);color:var(--fg);border:1px solid var(--line)}
+button:disabled{opacity:.35;cursor:not-allowed}
+.timer{font-size:12px;color:var(--mut);margin-top:8px}
+.result{margin-top:10px;border-top:1px solid var(--line);padding-top:10px;color:var(--mut);font-size:13px;min-height:20px}
+.result b{color:var(--fg)}
+.result button{margin-top:10px;flex:none;padding:10px 18px}
+.log{margin-top:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;font-size:12px;color:var(--mut);min-height:110px}
+.log div{margin:3px 0}
+.ov{position:fixed;inset:0;display:grid;place-items:center;background:rgba(8,7,17,.92);padding:20px;z-index:5}
+.ov.hide{display:none}
+.box{max-width:560px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:24px;font-size:13px;color:var(--mut);line-height:1.55}
+.box h1{margin:0 0 8px;color:var(--green);font-size:26px}
+.box b{color:var(--fg)}
+.box button{padding:13px 24px;flex:none;border-radius:99px;margin-top:12px}
+details{margin-top:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:12px;color:var(--mut)}
+details li{margin:6px 0}
+.empty{color:var(--mut);padding:40px 0;text-align:center}
+.net{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 12px;font-size:12px}
+.pill{border:1px solid var(--line);border-radius:999px;padding:4px 10px;color:var(--mut);background:var(--panel)}
+.pill.ok{border-color:var(--green);color:var(--green)}
+.pill.bad{border-color:var(--red);color:var(--red)}
+.pill.warn{border-color:#e6c36a;color:#e6c36a}
+.sim{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--purple);border-radius:8px;padding:8px 12px;margin:0 0 12px;font-size:12px;color:var(--mut)}
+.sim b{color:var(--fg)}
+@media (max-width:600px){.meta{grid-template-columns:1fr 1fr}.stats{gap:10px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">SNIPER<span>BOT</span> <span style="font-size:11px;color:var(--mut)">real launches · hypothetical fills · no wallet</span></div>
+    <div class="stats">
+      <div>LAUNCH<b id="round">0 / 0</b></div>
+      <div>SIMULATED BALANCE (SOL)<b id="bal">—</b></div>
+      <div>P&amp;L<b id="pnl">0.00</b></div>
+    </div>
+  </div>
+  <div class="net" id="net" aria-label="Network status">
+    <span class="pill warn" id="net-devnet">Checking devnet…</span>
+    <span class="pill" id="net-ledger">Checking ledger…</span>
+  </div>
+  <div class="sim">The balance here is <b>simulated</b>. Fills are hypothetical and no transaction is sent from this page.</div>
+  <div class="card">
+    <h2 id="name">Waiting for a run</h2>
+    <div class="mint" id="mint"></div>
+    <div class="meta">
+      <div>CURVE AT 5 MIN<b id="curve">—</b></div>
+      <div>DEV BOUGHT ON CREATE<b id="dev">—</b></div>
+      <div>CREATOR LAUNCHES IN LEDGER<b id="launches">—</b></div>
+    </div>
+    <div class="bar"><i id="fill"></i></div>
+    <div class="timer" id="obs">The bar shows the curve against the usual 85 SOL graduation level. The 30-minute reading stays hidden until you decide.</div>
+    <div class="result" id="result">Start a run to see the first launch.</div>
+    <div class="btns">
+      <button id="snipe" disabled>SNIPE 1 SOL</button>
+      <button id="pass" class="pass" disabled>PASS</button>
+    </div>
+    <div class="btns">
+      <button id="next" class="pass" hidden>NEXT LAUNCH</button>
+    </div>
+  </div>
+  <div class="log" id="log"></div>
+  <details>
+    <summary>Assumptions and limits</summary>
+    <ul id="assumptions"></ul>
+  </details>
+</div>
+<div class="ov" id="ov"><div class="box">
+  <h1 id="title">SNIPER BOT</h1>
+  <div id="msg">
+    <p>You are the sniper. Each launch is a real pump.fun create from the ledger, shown at its 5-minute bonding-curve reading. Snipe it for 1 SOL at that price, or pass.</p>
+    <p>Your position is marked out at the same coin's real 30-minute reading, on pump.fun's curve after a 1% fee each side. Passes are scored too, so you can see what each call would have made.</p>
+    <p>Twelve launches per run. Keys: S snipe, P pass, N next. No wallet and no real transactions. Rival bots, whales and block-zero auctions are not in the ledger, so they are not in the game.</p>
+  </div>
+  <button id="go">DEAL ME IN</button>
+</div></div>
+<script>
+const START_SOL = 10, SNIPE_SOL = 1, GRAD_SOL = 85;
+const $ = (id) => document.getElementById(id);
+const fmt = (n, d = 2) => (n == null || Number.isNaN(n)) ? "—" : Number(n).toFixed(d);
+const signed = (n, d = 2) => (n >= 0 ? "+" : "") + fmt(n, d);
+let runId = null, current = null, pending = null, awaiting = false, finished = false;
+let balance = START_SOL;
+
+function label(e) { return "$" + (e.symbol || e.name || e.mint.slice(0, 6)); }
+
+function note(text, cls) {
+  const d = document.createElement("div");
+  d.textContent = "> " + text;
+  if (cls) d.className = cls;
+  $("log").prepend(d);
+  while ($("log").children.length > 12) $("log").lastChild.remove();
+}
+
+function setButtons(enabled) {
+  $("snipe").disabled = !enabled || balance < SNIPE_SOL;
+  $("pass").disabled = !enabled;
+}
+
+// Every value here comes from the ledger, so it is written with textContent, never innerHTML.
+function showEntry(step) {
+  const e = step.entry;
+  current = e;
+  balance = step.balanceSol;
+  $("round").textContent = step.round + " / " + step.total;
+  $("bal").textContent = fmt(balance);
+  $("pnl").textContent = signed(balance - START_SOL);
+  $("pnl").className = balance >= START_SOL ? "good" : "bad";
+  $("name").textContent = label(e);
+  $("mint").textContent = e.mint;
+  $("curve").textContent = fmt(e.curveSol) + " SOL";
+  $("dev").textContent = e.devBuy ? "yes" : "no";
+  $("launches").textContent = e.creatorLaunches == null ? "—" : String(e.creatorLaunches);
+  $("fill").style.width = Math.max(0, Math.min(100, (e.curveSol / GRAD_SOL) * 100)).toFixed(1) + "%";
+  $("obs").textContent = "Reading taken " + new Date(e.observedAt * 1000).toLocaleString() + ". Entry price " + e.priceSol.toExponential(3) + " SOL per token. The 30-minute reading stays hidden until you decide.";
+  $("result").textContent = "Snipe for 1 SOL at the 5-minute price, or pass.";
+  $("next").hidden = true;
+  awaiting = false;
+  setButtons(true);
+}
+
+async function post(path, body) {
+  const res = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body || {}) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "HTTP " + res.status);
+  return data;
+}
+
+async function startRun() {
+  $("go").disabled = true;
+  try {
+    const step = await post("/api/arena/start", {});
+    runId = step.runId;
+    finished = false;
+    pending = null;
+    balance = START_SOL;
+    $("log").textContent = "";
+    $("title").textContent = "SNIPER BOT";
+    $("go").textContent = "DEAL ME IN";
+    $("ov").classList.add("hide");
+    showEntry(step);
+    note("run started on " + step.total + " real launches. Balance " + fmt(START_SOL) + " SOL.");
+  } catch (err) {
+    $("msg").textContent = "The arena could not start: " + err.message + ". Check that the recorder has written data/trench.db.";
+    $("ov").classList.remove("hide");
+  } finally {
+    $("go").disabled = false;
+  }
+}
+let pendingNext = null, baseline = null;
+
+// The page only shows what /api/network reports. It never assumes devnet.
+async function networkPills() {
+  const pill = (id, tone, text, title) => {
+    const el = document.getElementById(id);
+    el.className = "pill " + tone;
+    el.textContent = text;
+    el.title = title || "";
+  };
+  try {
+    const net = await (await fetch("/api/network")).json();
+    if (net.error) throw new Error(net.error);
+    const g = net.badges.game;
+    const l = net.badges.ledger;
+    pill("net-devnet", g.tone, g.label, g.detail);
+    pill("net-ledger", l.tone, l.label, l.detail);
+  } catch (err) {
+    pill("net-devnet", "bad", "Network status unavailable", err.message);
+    pill("net-ledger", "bad", "Ledger status unavailable", err.message);
+  }
+}
+
+function say(parts) {
+  const box = $("result");
+  box.textContent = "";
+  for (const [text, bold] of parts) {
+    const node = document.createElement(bold ? "b" : "span");
+    node.textContent = text;
+    box.appendChild(node);
+  }
+}
+
+function nextRound() {
+  if (!pendingNext) return;
+  const step = pendingNext;
+  pendingNext = null;
+  showEntry(step);
+  note("launch " + step.round + " of " + step.total + " dealt");
+}
+
+// The outcome is settled on the server. The 30-minute reading first appears here, after the player has acted.
+async function decide(action) {
+  const shown = current;
+  if (awaiting || finished || !runId || !shown) return;
+  awaiting = true;
+  current = null;
+  setButtons(false);
+  try {
+    const res = await post("/api/arena/act", { runId, action });
+    const s = res.settled;
+    const e = s.exit;
+    balance = res.balanceSol;
+    $("bal").textContent = fmt(balance);
+    $("pnl").textContent = signed(balance - START_SOL);
+    $("pnl").className = balance >= START_SOL ? "good" : "bad";
+    const who = label(shown);
+    const reading = "30-minute reading: " + fmt(e.curveSol) + " SOL on the curve, " + e.reading + ".";
+    if (s.taken) {
+      say([["Sniped " + who + " for 1 SOL. " + reading + " ", false], ["Result " + signed(s.pnlSol) + " SOL.", true]]);
+      note("sniped " + who + " " + signed(s.pnlSol) + " SOL", s.pnlSol >= 0 ? "good" : "bad");
+    } else {
+      say([["Passed " + who + ". " + reading + " ", false], ["Had you sniped it: " + signed(s.hypotheticalPnlSol) + " SOL.", true]]);
+      note("passed " + who + " (a snipe would have been " + signed(s.hypotheticalPnlSol) + " SOL)");
+    }
+    if (res.done) {
+      finish(res.summary);
+    } else {
+      pendingNext = res.next;
+      $("next").hidden = false;
+    }
+  } catch (err) {
+    current = shown;
+    say([["Could not settle this launch: " + err.message, false]]);
+    note("error: " + err.message, "bad");
+    setButtons(true);
+  } finally {
+    awaiting = false;
+  }
+}
+
+function finish(summary) {
+  finished = true;
+  current = null;
+  $("next").hidden = true;
+  setButtons(false);
+  $("title").textContent = "RUN COMPLETE";
+  const box = $("msg");
+  box.textContent = "";
+  const add = (text, bold) => {
+    const p = document.createElement("p");
+    if (bold) {
+      const b = document.createElement("b");
+      b.textContent = text;
+      p.appendChild(b);
+    } else {
+      p.textContent = text;
+    }
+    box.appendChild(p);
+  };
+  add(signed(summary.realisedPnlSol) + " SOL realised from " + summary.snipes + " snipe" + (summary.snipes === 1 ? "" : "s") + ", " + summary.wins + " of them above cost.", true);
+  add("Balance " + fmt(summary.balanceSol) + " SOL from " + START_SOL + " SOL. Passed launches, had you sniped them instead: " + signed(summary.passedHypotheticalPnlSol) + " SOL.");
+  if (baseline && baseline.launches) {
+    add("Ledger baseline: sniping every playable launch (" + baseline.launches + ") finished above cost " + fmt(baseline.shareAboveCostPct, 1) + "% of the time, with a mean of " + signed(baseline.meanPnlSol, 3) + " SOL per snipe.");
+  }
+  add("Hypothetical fills on real ledger data. Not a result you could trade.");
+  $("go").textContent = "RUN IT BACK";
+  $("ov").classList.remove("hide");
+}
+
+async function loadMeta() {
+  try {
+    const res = await fetch("/api/arena");
+    const data = await res.json();
+    baseline = data.baseline || null;
+    const list = $("assumptions");
+    list.textContent = "";
+    for (const text of data.assumptions || []) {
+      const li = document.createElement("li");
+      li.textContent = text;
+      list.appendChild(li);
+    }
+  } catch (err) {
+    note("could not load arena details: " + err.message, "bad");
+  }
+}
+
+$("go").onclick = startRun;
+$("snipe").onclick = () => decide("snipe");
+$("pass").onclick = () => decide("pass");
+$("next").onclick = nextRound;
+document.addEventListener("keydown", (ev) => {
+  if (!$("ov").classList.contains("hide")) return;
+  const k = ev.key.toLowerCase();
+  if (k === "s") decide("snipe");
+  else if (k === "p") decide("pass");
+  else if (k === "n") nextRound();
+});
+setButtons(false);
+loadMeta();
+networkPills();
+setInterval(networkPills, 30000);
+</script>
+</body>
+</html>

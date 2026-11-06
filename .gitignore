@@ -2,3 +2,5 @@ node_modules/
 vendor/
 .env
 *.log
+devnet/wallets/
+devnet/runs/

@@ -8,6 +8,8 @@ import { lamportsToSol } from "./parse.js";
 import { readLatest } from "./crossref.js";
 import { readLatestInsights } from "./insights.js";
 import { pct, verdictLabel } from "./structures.js";
+import { ArenaError, ASSUMPTIONS, act, baselineCached, startRun } from "./arena.js";
+import { networkStatus } from "./network.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dbFile = path.join(root, "data", "trench.db");
@@ -191,70 +193,116 @@ function page() {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Trench Watch</title>
+<title>Trench Watch · Command Post</title>
 <style>
-  :root { color-scheme: dark; --bg:#12140f; --card:#1c2118; --ink:#e7efe0; --muted:#9aa892; --line:#31382c; --ok:#b6e37a; --bad:#f0a3a0; --warn:#e6c36a; }
-  * { box-sizing: border-box; }
-  body { margin:0; font:15px/1.45 "Segoe UI", sans-serif; background:var(--bg); color:var(--ink); }
-  header, main { width:min(1100px, calc(100% - 32px)); margin:0 auto; }
-  header { padding:28px 0 8px; display:flex; justify-content:space-between; gap:16px; align-items:end; }
-  h1 { font-size:28px; font-weight:650; margin:0; letter-spacing:-0.03em; }
-  h2 { font-size:16px; margin:28px 0 10px; }
-  p { color:var(--muted); }
-  a { color:var(--ok); }
+  :root {
+    color-scheme: dark;
+    --bg:#0b0f0c; --field:#101812; --card:#151e17; --card-2:#1c2720;
+    --ink:#ece4c8; --muted:#9fa68a; --brass:#7d6a3c; --gold:#e2b558;
+    --line:#2e3c2e; --ok:#8fd16a; --bad:#e0715f; --warn:#e8b84d; --scout:#6fa6d9;
+    --display:Bahnschrift, "Segoe UI Semibold", "Segoe UI", sans-serif;
+    --body:"Segoe UI", sans-serif;
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; min-height:100vh; font:15px/1.45 var(--body); color:var(--ink);
+    background:
+      radial-gradient(ellipse at 50% -15%, rgba(226,181,88,.14), transparent 60%),
+      repeating-linear-gradient(0deg, rgba(143,209,106,.04) 0 1px, transparent 1px 44px),
+      repeating-linear-gradient(90deg, rgba(143,209,106,.04) 0 1px, transparent 1px 44px),
+      var(--bg);
+  }
+  header, main { width:min(1140px, calc(100% - 32px)); margin:0 auto; }
+  header { padding:24px 0 16px; display:flex; justify-content:space-between; gap:20px; align-items:flex-end; flex-wrap:wrap; border-bottom:2px solid var(--brass); }
+  .kicker { font:600 11px/1 var(--display); letter-spacing:.24em; text-transform:uppercase; color:var(--gold); }
+  h1 { font:650 36px/1.05 var(--display); letter-spacing:.05em; text-transform:uppercase; margin:8px 0 4px; }
+  h2 { display:flex; align-items:center; gap:12px; font:600 14px/1 var(--display); letter-spacing:.16em; text-transform:uppercase; color:var(--gold); margin:30px 0 12px; }
+  h2::after { content:""; flex:1; height:1px; background:linear-gradient(90deg, var(--brass), transparent); }
+  p { color:var(--muted); margin:6px 0; }
+  a { color:var(--gold); }
+  .hud { display:grid; gap:10px; width:min(360px, 100%); }
   .chips { display:flex; gap:8px; flex-wrap:wrap; }
-  .chip { border:1px solid var(--line); background:var(--card); border-radius:999px; padding:6px 10px; font-size:13px; }
+  .chip { border:1px solid var(--brass); background:var(--card); padding:5px 9px; font:600 12px/1.2 var(--display); letter-spacing:.08em; text-transform:uppercase; }
   .ok { color:var(--ok); } .bad { color:var(--bad); } .warn { color:var(--warn); }
+  .chip.net-ok { border-color:var(--ok); color:var(--ok); }
+  .chip.net-bad { border-color:var(--bad); color:var(--bad); background:rgba(224,113,95,.12); }
+  .chip.net-warn { border-color:var(--warn); color:var(--warn); }
+  .devnet-banner { background:rgba(111,166,217,.10); border:1px solid var(--scout); border-left:4px solid var(--scout); padding:8px 12px; margin:14px 0 0; font:600 12px/1.4 var(--display); letter-spacing:.08em; text-transform:uppercase; color:var(--ink); display:none; }
+  .devnet-banner.show { display:block; }
+  .devnet-banner.bad { border-color:var(--bad); border-left-color:var(--bad); background:rgba(224,113,95,.12); }
+  .devnet-banner span { color:var(--muted); font-weight:400; letter-spacing:.02em; text-transform:none; }
+  .turn-row { display:flex; justify-content:space-between; gap:12px; font:600 12px/1 var(--display); letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+  .turn-row b { color:var(--gold); font-weight:600; }
+  .turn-bar { height:6px; margin-top:8px; background:var(--card-2); border:1px solid var(--line); overflow:hidden; }
+  .turn-bar i { display:block; height:100%; width:0; background:linear-gradient(90deg, var(--brass), var(--gold)); animation:turn 5s linear infinite; }
+  @keyframes turn { from { width:0; } to { width:100%; } }
+  .mission { margin-top:18px; background:var(--card); border:1px solid var(--line); border-left:4px solid var(--gold); padding:12px 16px; }
+  .mission p { margin:4px 0 0; color:var(--ink); }
   .grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; }
-  .stat { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 14px; }
-  .stat b { display:block; font-size:22px; font-variant-numeric:tabular-nums; }
-  .stat span { color:var(--muted); font-size:12px; }
-  table { width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  .stat { background:var(--card); border:1px solid var(--line); border-top:2px solid var(--brass); padding:12px 14px; box-shadow:inset 0 1px 0 rgba(226,181,88,.08); }
+  .stat b { display:block; font:600 24px/1.2 var(--display); font-variant-numeric:tabular-nums; }
+  .stat span { display:block; color:var(--muted); font:600 11px/1.3 var(--display); letter-spacing:.12em; text-transform:uppercase; }
+  table { width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); }
   th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; font-size:13px; }
-  th { color:var(--muted); font-weight:600; }
-  code { font-family:Consolas, monospace; font-size:12px; }
-  .log { white-space:pre-wrap; font:12px/1.4 Consolas, monospace; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px; max-height:280px; overflow:auto; }
-  .learnings, .cross { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:4px 16px 12px; }
-  .learnings li, .cross li { margin:8px 0; }
+  th { color:var(--gold); font:600 12px/1.3 var(--display); letter-spacing:.12em; text-transform:uppercase; background:var(--card-2); }
+  td { color:var(--ink); }
+  code { font-family:Consolas, monospace; font-size:12px; color:var(--muted); }
+  .log { white-space:pre-wrap; font:12px/1.4 Consolas, monospace; color:var(--muted); background:var(--field); border:1px solid var(--line); padding:12px; max-height:280px; overflow:auto; }
+  .learnings, .cross { background:var(--card); border:1px solid var(--line); border-top:2px solid var(--brass); padding:4px 16px 12px; }
+  .learnings li, .cross li { margin:8px 0; color:var(--ink); }
+  .learnings li::marker, .cross li::marker { color:var(--gold); }
   .insights { display:grid; gap:12px; }
-  .insight { background:var(--card); border:1px solid var(--line); border-left:4px solid var(--line); border-radius:12px; padding:14px 16px; }
-  .insight.edge { border-left-color:var(--ok); }
+  .insight { background:var(--card); border:1px solid var(--line); border-left:4px solid var(--line); padding:14px 16px; }
+  .insight.edge { border-left-color:var(--gold); }
   .insight.avoid { border-left-color:var(--bad); }
   .insight.filter { border-left-color:var(--warn); }
-  .insight.measure { border-left-color:#8aa4c8; }
+  .insight.measure { border-left-color:var(--scout); }
   .insight-head { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap; }
-  .insight h3 { margin:0; font-size:16px; }
-  .insight h4 { margin:0 0 4px; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+  .insight h3 { margin:0; font:600 17px/1.25 var(--display); letter-spacing:.04em; text-transform:uppercase; color:var(--ink); }
+  .insight h4 { margin:0 0 4px; font:600 11px/1.3 var(--display); letter-spacing:.14em; text-transform:uppercase; color:var(--gold); }
   .insight p { margin:6px 0; }
   .insight-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:10px; }
   .insight ul { margin:4px 0 0 18px; padding:0; }
   .insight li { margin:4px 0; color:var(--ink); font-size:13px; }
   .insight details { margin-top:10px; }
-  .insight summary { cursor:pointer; color:var(--muted); font-size:13px; }
+  .insight summary { cursor:pointer; color:var(--gold); font-size:13px; }
   .insight .evidence { border-top:1px solid var(--line); margin-top:10px; padding-top:8px; }
   .insight .evidence p { font-size:13px; }
   .insight .muted { color:var(--muted); }
-  .insight-read { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 14px; color:var(--ink); margin:0; }
-  @media (max-width:800px) { .grid { grid-template-columns:1fr 1fr; } .insight-grid { grid-template-columns:1fr; } }
+  .insight-read { background:var(--card-2); border:1px solid var(--line); border-left:4px solid var(--gold); padding:12px 14px; color:var(--ink); margin:0 0 10px; }
+  tbody tr:hover td { background:rgba(226,181,88,.05); }
+  @media (max-width:800px) { .grid { grid-template-columns:1fr 1fr; } .insight-grid { grid-template-columns:1fr; } h1 { font-size:28px; } header { flex-direction:column; align-items:flex-start; } }
 </style>
 </head>
 <body>
 <header>
   <div>
+    <div class="kicker">Command post · Pump.fun front</div>
     <h1>Trench Watch</h1>
     <p id="sub">Local ledger of Pump.fun launches. No wallet. No trades.</p>
   </div>
-  <div class="chips" id="chips"></div>
+  <div class="hud">
+    <div class="chips" id="chips"></div>
+    <div class="chips" id="netchips" aria-label="Network"></div>
+    <div class="turn-row"><span>Turn <b id="turn">0</b></span><span>Scan every 5 s</span></div>
+    <div class="turn-bar"><i></i></div>
+  </div>
 </header>
 <main>
+  <div class="devnet-banner" id="netbanner" role="status"></div>
+  <section class="mission">
+    <div class="kicker">Standing orders</div>
+    <p>Record Pump.fun creates as they stream in, read each bonding curve at 5 and 30 minutes, and label which coins are still tradable after 48 hours. The panel reports the ground. It places no orders.</p>
+  </section>
+  <h2>Territory · ledger totals</h2>
   <section class="grid" id="stats"></section>
-  <h2>Largest 30-minute curve readings</h2>
+  <h2>Strongholds · largest 30-minute curve readings</h2>
   <div id="top"></div>
-  <h2>Newest mints</h2>
+  <h2>Frontier · newest mints</h2>
   <div id="recent"></div>
-  <h2>Recent gaps</h2>
+  <h2>Fog of war · recent ingest gaps</h2>
   <div id="gaps"></div>
-  <h2>Learnings</h2>
+  <h2>Intel · learnings</h2>
   <div class="learnings">
     <p>From the measurement papers, and from this database as of 6 November 2026. Full citations are in LEARNINGS.md. This is not a buy rule.</p>
     <ul>
@@ -266,13 +314,20 @@ function page() {
       <li>This file: about 95 percent of kept creates include a creator buy. The live counts, the curve distribution, and the profit reading are in Insights below.</li>
     </ul>
   </div>
-  <h2>Insights</h2>
+  <h2>Battle plans · insights</h2>
   <div class="insights" id="insights"></div>
-  <h2>Cross-research</h2>
+  <h2>Arena · sniper game on real launches</h2>
+  <div class="cross" id="arena-box">
+    <p>A game on the ledger's real pump.fun launches. Each round shows the 5-minute bonding-curve reading. You snipe for 1 SOL or pass, and the same coin's 30-minute reading settles the trade. Hypothetical fills only. No wallet, no transactions.</p>
+    <p id="arena-base">Loading the ledger baseline…</p>
+    <p><a href="/arena" target="_blank" rel="noreferrer">Open the arena in its own tab</a></p>
+    <iframe src="/arena" title="Sniper arena" style="width:100%;height:900px;border:1px solid var(--line);background:#080711;"></iframe>
+  </div>
+  <h2>Recon · cross-research</h2>
   <div class="cross" id="cross">
     <p>The agent reads this ledger against the papers. It runs inside the recorder, once at startup and every 10 minutes. It does not send trades.</p>
   </div>
-  <h2>Log</h2>
+  <h2>Dispatch log</h2>
   <div class="log" id="log"></div>
   <p>Readings above about 85 SOL are past the usual Pump.fun graduation level. Treat those as unchecked account parses, not as liquidity you can exit.</p>
 </main>
@@ -282,7 +337,7 @@ const sol = (n) => n == null ? "—" : Number(n).toLocaleString(undefined, { max
 function chip(text, cls) { return '<span class="chip ' + cls + '">' + text + '</span>'; }
 function table(headers, rows) {
   const head = '<tr>' + headers.map(h => '<th>' + h + '</th>').join('') + '</tr>';
-  const body = rows.length ? rows.map(r => '<tr>' + r.map(c => '<td>' + c + '</td>').join('') + '</tr>').join('') : '<tr><td colspan="' + headers.length + '">None yet</td></tr>';
+  const body = rows.length ? rows.map(r => '<tr>' + r.map(c => '<td>' + c + '</td>').join('') + '</tr>').join('') : '<tr><td colspan="' + headers.length + '">No contacts yet</td></tr>';
   return '<table>' + head + body + '</table>';
 }
 function esc(s) { return String(s ?? "").replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
@@ -315,8 +370,11 @@ function insightCard(card) {
     '</details>' +
   '</article>';
 }
+let turn = 0;
 let lastInsightsKey = "";
 async function tick() {
+  turn += 1;
+  document.getElementById('turn').textContent = String(turn);
   const res = await fetch('/api/status');
   const data = await res.json();
   const rec = data.recorder || {};
@@ -330,9 +388,9 @@ async function tick() {
   if (!db) { document.getElementById('stats').innerHTML = '<p>' + esc(data.error || 'No database') + '</p>'; return; }
   const snapN = (db.snapshots || []).reduce((s, r) => s + r.n, 0);
   const cards = [
-    [db.tokens, 'Mints'],
+    [db.tokens, 'Mints kept'],
     [db.spanHours.toFixed(1) + ' h', 'Span of creates'],
-    [snapN, 'Snapshots'],
+    [snapN, 'Curve snapshots'],
     [db.repeatCreators, 'Repeat creators'],
     [db.devBuys + ' / ' + db.tokens, 'Dev buy on create'],
     [db.investigations, 'Investigations saved'],
@@ -373,11 +431,91 @@ async function tick() {
     table(['Stop','Verdict','Ledger','Paper'], xrefRows);
   document.getElementById('log').textContent = (data.log || []).join('\\n');
 }
+async function arenaBaseline() {
+  const line = document.getElementById('arena-base');
+  try {
+    const b = ((await (await fetch('/api/arena')).json()).baseline) || {};
+    line.textContent = b.launches
+      ? 'Ledger baseline: sniping every playable launch (' + b.launches + ') finished above cost ' + Number(b.shareAboveCostPct).toFixed(1) + '% of the time. Median snipe ' + Number(b.medianPnlSol).toFixed(3) + ' SOL, mean ' + Number(b.meanPnlSol).toFixed(3) + ' SOL. Hypothetical, before any priority fee.'
+      : 'No playable launches in the ledger yet.';
+  } catch (err) {
+    line.textContent = 'Arena baseline unavailable: ' + err.message;
+  }
+}
+arenaBaseline();
+setInterval(arenaBaseline, 60000);
+
+// Each network is its own badge, named by the genesis hash its RPC reports. A banner appears only when devnet is verified.
+function netChip(badge) {
+  const cls = badge.tone === 'ok' ? 'net-ok' : badge.tone === 'bad' ? 'net-bad' : 'net-warn';
+  const el = document.createElement('span');
+  el.className = 'chip ' + cls;
+  el.title = badge.detail;
+  el.textContent = badge.label;
+  return el;
+}
+async function networkBadges() {
+  const chips = document.getElementById('netchips');
+  const banner = document.getElementById('netbanner');
+  try {
+    const net = await (await fetch('/api/network')).json();
+    if (net.error) throw new Error(net.error);
+    const badges = net.badges || {};
+    const game = net.activeNetwork || 'devnet';
+    const gameName = game.toUpperCase();
+    chips.replaceChildren(netChip(badges.game || { tone: 'warn', label: gameName + ' unknown', detail: '' }), netChip(badges.ledger || { tone: 'warn', label: 'Ledger unknown', detail: '' }));
+    const verified = net.game && net.game.network === game;
+    if (verified) {
+      banner.className = 'devnet-banner show';
+      banner.textContent = gameName + ' · the RPC reports the ' + game + ' genesis hash. Test SOL on ' + game + ' has no value. ';
+      const note = document.createElement('span');
+      note.textContent = 'The pump.fun ledger is still read from mainnet-beta; it is not ' + game + '.';
+      banner.appendChild(note);
+    } else {
+      banner.className = 'devnet-banner bad show';
+      banner.textContent = gameName + ' is not verified: ' + ((badges.game && badges.game.detail) || 'unknown network') + '. Do not send transactions until this reads ' + gameName + '.';
+    }
+  } catch (err) {
+    chips.replaceChildren(netChip({ tone: 'warn', label: 'Network status unavailable', detail: err.message }));
+    banner.className = 'devnet-banner bad show';
+    banner.textContent = 'Network status unavailable: ' + err.message + '. Treat the chain as unverified.';
+  }
+}
+networkBadges();
+setInterval(networkBadges, 30000);
 tick();
 setInterval(tick, 5000);
 </script>
 </body>
 </html>`;
+}
+
+function readBody(req, limit = 4096) {
+  return new Promise((resolve, reject) => {
+    let size = 0;
+    const chunks = [];
+    req.on("data", (chunk) => {
+      size += chunk.length;
+      if (size > limit) {
+        reject(new ArenaError(413, "request body too large"));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    req.on("error", reject);
+  });
+}
+
+function sendJson(res, status, body) {
+  res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+  res.end(JSON.stringify(body));
+}
+
+function sendArenaError(res, err) {
+  const status = err instanceof ArenaError ? err.status : err instanceof SyntaxError ? 400 : 500;
+  sendJson(res, status, { error: err.message });
 }
 
 export function startPanel(port = Number(process.env.PANEL_PORT || 8787)) {
@@ -426,6 +564,50 @@ export function startPanel(port = Number(process.env.PANEL_PORT || 8787)) {
       } catch (err) {
         res.writeHead(500, { "content-type": "application/json; charset=utf-8" });
         res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+    if (url.pathname === "/arena" || url.pathname === "/arena/") {
+      try {
+        const page = fs.readFileSync(path.join(root, "arena", "index.html"));
+        res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
+        res.end(page);
+      } catch (err) {
+        sendJson(res, 500, { error: "arena page unavailable: " + err.message });
+      }
+      return;
+    }
+    if (url.pathname === "/api/network" && req.method === "GET") {
+      try {
+        sendJson(res, 200, await networkStatus());
+      } catch (err) {
+        sendJson(res, 500, { error: err.message });
+      }
+      return;
+    }
+    if (url.pathname === "/api/arena" && req.method === "GET") {
+      try {
+        sendJson(res, 200, { assumptions: ASSUMPTIONS, baseline: baselineCached(root) });
+      } catch (err) {
+        sendArenaError(res, err);
+      }
+      return;
+    }
+    if (url.pathname === "/api/arena/start" && req.method === "POST") {
+      try {
+        await readBody(req);
+        sendJson(res, 200, startRun(root));
+      } catch (err) {
+        sendArenaError(res, err);
+      }
+      return;
+    }
+    if (url.pathname === "/api/arena/act" && req.method === "POST") {
+      try {
+        const body = JSON.parse((await readBody(req)) || "{}");
+        sendJson(res, 200, act(String(body.runId || ""), String(body.action || "")));
+      } catch (err) {
+        sendArenaError(res, err);
       }
       return;
     }
